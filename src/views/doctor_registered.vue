@@ -292,9 +292,7 @@
             :total="patientPageTotal"
             :pager-count="11"
             :page-size="patientPageSize"
-            :page-sizes="[10, 20, 50]"
             :current-page="patientPageNum"
-            @size-change="patientSizeChange"
             @current-change="patientCurrentChange"
             size="small"
           />
@@ -326,7 +324,7 @@ import { pcaTextArr } from 'element-china-area-data'
 const queryTypeKeyword = ref('') //搜索关键词
 const timeData = ref([]) //时段ID
 const deptData = ref([]) //科室数据
-const queryRegisteredItems = ref([]) //搜索挂号数据类型
+const queryRegisteredItemsData = ref([]) //搜索挂号数据类型
 const registeredItems = ref([])
 const pageNum = ref(1) //当前页
 const pageSize = ref(5) //每页显示的数据
@@ -428,7 +426,7 @@ const joinFeeFetch = async () => {
 
     const res = await http.post('/regList/regList/add', requestData)
 
-    if (res.data.data) {
+    if (res.data.code === '00000') {
       ElNotification({
         title: '挂号成功！',
         message: `请通知患者前往缴费`,
@@ -446,6 +444,7 @@ const joinFeeFetch = async () => {
     }
   } catch (error) {
     ElMessage.error('表单校验失败，请检查输入')
+    console.log(error)
   }
 }
 
@@ -494,23 +493,23 @@ const formatDate = (date) => {
 
 //获取当天的所有排班信息
 const getTodaySchedulingFetch = () => {
-  http
-    .get('/doctors/getScheduleData', {
-      params: {
-        deptId: queryForm.selectedDeptId,
-        regTypeId: queryForm.querySelectedItemId,
-        timePeriod: queryForm.selectedTimeDataId,
-        date: formatDate(queryForm.queryRegTime),
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-      },
-    })
-    .then((res) => {
-      registeredData.value = res.data.data?.list || [] // 防止 list 为空时报错
-      pageNum.value = res.data.data?.pageNum || 1
-      pageSize.value = res.data.data?.pageSize || 5
-      pageTotal.value = res.data.data?.total || 0
-    })
+  //获取当天的所有排班信息查询条件
+  let getSchedultQueryData = reactive({
+    deptId: queryForm.selectedDeptId || null,
+    regTypeId: queryForm.querySelectedItemId || null,
+    timePeriod: queryForm.selectedTimeDataId || null,
+    date: formatDate(queryForm.queryRegTime),
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+  })
+
+  http.post('/doctors/doctors/getScheduleData', getSchedultQueryData).then((res) => {
+    console.log('返回的数据：', res.data)
+    registeredData.value = res.data.data?.list || [] // 防止 list 为空时报错
+    pageNum.value = res.data.data?.pageNum || 1
+    pageSize.value = res.data.data?.pageSize || 5
+    pageTotal.value = res.data.data?.total || 0
+  })
 }
 
 // 点击某行时，记录选中的身份证号
@@ -589,32 +588,30 @@ const selectedPatientFetch = () => {
   patientData.value = []
 }
 
+const queryPatientDataObj = reactive({
+  pageNum: patientPageNum.value,
+  pageSize: patientPageSize.value,
+})
+
 //加载患者
 const addPatientFetch = () => {
   loadPatientDrawerVisible.value = true
 
-  // if (patientData.value.length === 0) {
   http
-    .get('/patient/list', {
-      params: {
-        pageNum: patientPageNum.value,
-        pageSize: patientPageSize.value,
-      },
-    })
+    .post('/patient/patient/list', queryPatientDataObj)
     .then((res) => {
       // 确保数据存在，防止 undefined 报错
-      const data = res.data || {}
+      const patientResData = res.data || {}
 
-      patientData.value = data.list || [] // 确保 patientData.value 是数组
-      patientPageNum.value = data.pageNum || 1
-      patientPageSize.value = data.pageSize || 10
-      patientPageTotal.value = data.total || 0
+      patientData.value = patientResData.data.list || [] // 确保 patientData.value 是数组
+      patientPageNum.value = patientResData.data.pageNum || 1
+      patientPageSize.value = patientResData.data.pageSize || 10
+      patientPageTotal.value = patientResData.data.total || 0
     })
     .catch((error) => {
       ElMessage.error('患者数据加载失败，请稍后重试')
       console.error('获取患者列表失败:', error)
     })
-  // }
 }
 
 const handlePatientDrawerClose = () => {
@@ -631,7 +628,7 @@ const handlePatientDrawerClose = () => {
 const getAllTimesDataFetch = () => {
   if (timeData.value.length === 0) {
     queryTypeKeyword.value = 'his_subsection_type'
-    http.get(`/dictData/dictData/get/${queryTypeKeyword.value}`).then((res) => {
+    http.get(`/dict/dict/getDictByType/${queryTypeKeyword.value}`).then((res) => {
       timeData.value = res.data.data
     })
   }
@@ -648,7 +645,7 @@ const resetQuery = () => {
 //获取所有科室
 const getAllDeptDataFetch = () => {
   if (deptData.value.length === 0) {
-    http.get('/dept/dept/getAll').then((res) => {
+    http.get('/dept/dept/getNormalDept').then((res) => {
       deptData.value = res.data
     })
   }
@@ -671,16 +668,20 @@ onMounted(() => {
 
 //获取排班挂号类型
 const getScheduleRegItemFetch = () => {
-  http.get('/dictData/dictData/get/his_scheduling_type').then((res) => {
+  http.get('/dict/dict/getDictByType/his_scheduling_type').then((res) => {
     regTypeMap.value = res.data.data
   })
 }
 
+const queryRegisteredItems = reactive({
+  keyword: '',
+})
+
 //获取展示挂号类型
 const getRegItemFetch = () => {
-  http.get('/registeredItem/registeredItem/list').then((res) => {
+  http.post('/registeredItem/registeredItem/list', queryRegisteredItems).then((res) => {
     registeredItems.value = res.data.data.list
-    queryRegisteredItems.value = res.data.data.list
+    queryRegisteredItemsData.value = res.data.data.list
   })
 }
 

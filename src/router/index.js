@@ -327,7 +327,6 @@ router.beforeEach(async (to) => {
 
   //未登录且访问非登录页面，跳转到登录页
   if (!token && to.path !== '/login') {
-    ElMessage.error('系统保护：请先登录后进行操作')
     return '/login'
   }
 

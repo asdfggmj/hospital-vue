@@ -233,7 +233,7 @@ const addDept = () => {
 const addDeptSubmit = () => {
   // console.log("添加的数据"+deptObject)
   //后端发送添加科室请求
-  http.post('/dept/addDept', deptObject).then((res) => {
+  http.post('/dept/dept/addDept', deptObject).then((res) => {
     if (res.data.data) {
       ElMessage.success('添加成功')
       addOrEditDrawerModal.value = false
@@ -252,7 +252,7 @@ const delDept = (deptId) => {
     type: 'warning',
   }).then(() => {
     //删除科室
-    http.post('dept/deleteDept?deptId=' + deptId).then((res) => {
+    http.post('/dept/dept/deleteDept?deptId=' + deptId).then((res) => {
       if (res.data.data) {
         ElMessage.success('删除成功')
         getDeptFetch()
@@ -269,7 +269,7 @@ const editDept = (deptId) => {
   addOrEditDrawerModal.value = true
   //回调单个科室数据
   http
-    .get('/dept/getDeptById?deptId=' + deptId)
+    .post('/dept/dept/getDeptById?deptId=' + deptId)
     .then((res) => {
       if (res.data.data) {
         deptObject.deptId = deptId
@@ -290,7 +290,7 @@ const editDept = (deptId) => {
 const updateDeptSubmit = () => {
   // console.log("修改的数据"+userObject)
   //后端发送修改科室请求
-  http.post('/dept/updateDept', deptObject).then((res) => {
+  http.post('/dept/dept/updateDept', deptObject).then((res) => {
     if (res.data) {
       ElMessage.success('修改成功')
       addOrEditDrawerModal.value = false
@@ -400,14 +400,14 @@ onMounted(() => {
 const getDeptFetch = () => {
   loading.value = true
   //获取科室数据
+  //分页参数对象
+  const params={
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+    keyWord: keyWord.value
+  }
   http
-    .get('/dept/list', {
-      params: {
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-        keyWord: keyWord.value,
-      },
-    })
+    .post('/dept/dept/list', params)
     .then((res) => {
       const list = Array.isArray(res.data.data.list) ? res.data.data.list : []
       // 将 status 转换为数字类型

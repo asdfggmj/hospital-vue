@@ -262,7 +262,7 @@ const editDictData = (dictCode) => {
   addOrEditDrawerTitle.value = '编辑字典数据'
   addOrEditDrawerModal.value = true
   //回调单个字典数据数据
-  http.get('/dictData/getById?id=' + dictCode).then((res) => {
+  http.get('/dictData/dictData/getById?id=' + dictCode).then((res) => {
     if (res.data.data) {
       dictDataObject.dictCode = res.data.data.dictCode
       dictDataObject.dictLabel = res.data.data.dictLabel
@@ -282,7 +282,7 @@ const editDictData = (dictCode) => {
 const addOrEditDictDataSubmit = () => {
   // console.log("添加的数据"+dictDataObject)
   //后端发送添加字典数据请求
-  http.post('/dictData/addOrEditDictData', dictDataObject).then((res) => {
+  http.post('/dictData/dictData/addOrEditDictData', dictDataObject).then((res) => {
     if (res.data.data) {
       if (res.data.data.includes('成功')) {
         ElMessage.success(res.data.data)
@@ -305,7 +305,7 @@ const delDictData = (roleId) => {
     type: 'warning',
   }).then(() => {
     //删除字典数据
-    http.post('dictData/deleteById?id=' + roleId).then((res) => {
+    http.post('dictData/dictData/deleteById?id=' + roleId).then((res) => {
       if (res.data.data) {
         ElMessage.success('删除成功')
         getDictFetch()
@@ -414,7 +414,7 @@ onMounted(() => {
 //获取字典数据
 const getDictFetch = () => {
   http
-    .get('/dictData/list', {
+    .get('/dictData/dictData/list', {
       params: {
         dictType: dictType.value,
         pageNum: pageNum.value,

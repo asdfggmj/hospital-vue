@@ -196,12 +196,12 @@ const batchDelete = async () => {
     //提取id
     const ids = depIds.value.map((item) => item.deptId)
     // 调用 API 批量删除
-    http.post('/dept/batchDelete', { ids }).then((res) => {
-      if (res.data.data && res.data.data !== null) {
-        ElMessage.success('删除成功')
+    http.delete('/dept/dept/batchDelete', {data:ids} ).then((res) => {
+      if (res.data && res.data !== null) {
+        ElMessage.success('批量删除成功')
         getDeptFetch()
       } else {
-        ElMessage.error('删除失败')
+        ElMessage.error('批量删除失败')
       }
     })
   })
@@ -233,8 +233,8 @@ const addDept = () => {
 const addDeptSubmit = () => {
   // console.log("添加的数据"+deptObject)
   //后端发送添加科室请求
-  http.post('/dept/dept/addDept', deptObject).then((res) => {
-    if (res.data.data) {
+  http.post('/dept/dept/save', deptObject).then((res) => {
+    if (res.data) {
       ElMessage.success('添加成功')
       addOrEditDrawerModal.value = false
     } else {
@@ -252,7 +252,7 @@ const delDept = (deptId) => {
     type: 'warning',
   }).then(() => {
     //删除科室
-    http.post('/dept/dept/deleteDept?deptId=' + deptId).then((res) => {
+    http.delete('/dept/dept/deleteDept' , {params:{deptId:deptId}}).then((res) => {
       if (res.data.data) {
         ElMessage.success('删除成功')
         getDeptFetch()
@@ -269,7 +269,7 @@ const editDept = (deptId) => {
   addOrEditDrawerModal.value = true
   //回调单个科室数据
   http
-    .post('/dept/dept/getDeptById?deptId=' + deptId)
+    .get('/dept/dept/getDeptById?deptId=' + deptId)
     .then((res) => {
       if (res.data.data) {
         deptObject.deptId = deptId
@@ -288,7 +288,6 @@ const editDept = (deptId) => {
 
 //修改科室
 const updateDeptSubmit = () => {
-  // console.log("修改的数据"+userObject)
   //后端发送修改科室请求
   http.post('/dept/dept/updateDept', deptObject).then((res) => {
     if (res.data) {
@@ -341,8 +340,8 @@ const currentChange = (newPage) => {
 // 修改科室状态改变事件
 const updateUserStatus = async (id, status, name) => {
   try {
-    const response = await http.put(`/dept/update/${id}/${status}`)
-    if (response.data.data) {
+    const response = await http.put(`/dept/dept/update/${id}/${status}`)
+    if (response.data) {
       ElNotification({
         title: '修改成功!',
         message: `科室 ${name} 的状态已更新为 ${status === 0 ? '正常' : '禁用'}`,

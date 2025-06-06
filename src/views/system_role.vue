@@ -229,12 +229,12 @@ const menuGrant = async (index: number, role) => {
   //获取角色的编号
   rid.value = role.roleId
   //查询当前角色拥有的子菜单的权限编号
-  await http.get('/role/getRoleMids?rid=' + rid.value).then((res) => {
+  await http.get('/role/role/getRoleMids?rid=' + rid.value).then((res) => {
     mids.value = res.data.data
     console.log(mids.value)
   })
   //查询所有的菜单(查询父菜单以及子菜单的层次结构的格式)
-  await http.get('/menu/getMenusAll').then((res) => {
+  await http.get('/menu/menu/getMenusAll').then((res) => {
     menuData.value = res.data.data
     console.log(menuData.value)
   })
@@ -252,7 +252,7 @@ const addRoleMenu = () => {
   })
   checkMids = [...new Set(checkMids)].filter((id) => id) // 去重并过滤空值
 
-  http.post('/role/addRoleMenu', grantObject).then((res) => {
+  http.post('/role/role/addRoleMenu', grantObject).then((res) => {
     ElMessage({
       message: '授权成功',
       type: 'success',
@@ -288,7 +288,7 @@ const addRole = () => {
 const addRoleSubmit = () => {
   // console.log("添加的数据"+roleObject)
   //后端发送添加角色请求
-  http.post('/role/addRole', roleObject).then((res) => {
+  http.post('/role/role/addRole', roleObject).then((res) => {
     if (res.data.data) {
       ElMessage.success('添加成功')
       addOrEditDrawerModal.value = false
@@ -307,7 +307,7 @@ const delRole = (roleId) => {
     type: 'warning',
   }).then(() => {
     //删除角色
-    http.post('role/delRole?roleId=' + roleId).then((res) => {
+    http.post('/role/role/delRole?roleId=' + roleId).then((res) => {
       if (res.data.data) {
         ElMessage.success('删除成功')
         getRoleFetch()
@@ -325,7 +325,7 @@ const editRole = (roleId) => {
   addOrEditDrawerModal.value = true
   //回调单个角色数据
   http
-    .get('/role/getRole?rid=' + roleId)
+    .get('/role/role/getRole?rid=' + roleId)
     .then((res) => {
       roleObject.roleId = roleId
       roleObject.roleName = res.data.data.roleName
@@ -344,7 +344,7 @@ const editRole = (roleId) => {
 const updateRoleSubmit = () => {
   // console.log("修改的数据"+userObject)
   //后端发送修改角色请求
-  http.post('/role/updRole', roleObject).then((res) => {
+  http.post('/role/role/updRole', roleObject).then((res) => {
     if (res.data.data) {
       ElMessage.success('修改成功')
       addOrEditDrawerModal.value = false
@@ -411,7 +411,7 @@ const beforeChange = () => {
 // 修改角色状态改变事件
 const updateUserStatus = async (rid, roleStatus, roleName) => {
   try {
-    const response = await http.put(`/role/update/${rid}/${roleStatus}`)
+    const response = await http.put(`/role/role/update/${rid}/${roleStatus}`)
     if (response.data.data) {
       ElNotification({
         title: '修改成功!',
@@ -455,24 +455,24 @@ const handleBeforeChange = async (rid, roleStatus, roleName) => {
   }
 }
 
-// 获取角色列表
+// 获取角色数据
 const getRoleFetch = () => {
-  http
-    .get('/role/list', {
-      params: {
-        pageNum: pageNum.value,
-        pageSize: pageSize.value,
-        keyWord: keyWord.value,
-      },
+  const params = {
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+    keyWord: keyWord.value,
+  }
+  http.post('/role/role/list', {
     })
     .then((res) => {
-      const list = Array.isArray(res.data.data.list) ? res.data.data.list : []
+      const list = Array.isArray(res.data.data) ? list : []
+      console.log('获取的角色数据', res.data.data.list)
       // 将 status 转换为数字类型
       list.forEach((item) => {
         item.status = Number(item.status)
       })
       roleData.splice(0, roleData.length, ...list)
-      pageTotal.value = res.data.data?.total || 0
+      pageTotal.value = res?.total || 0
       setTimeout(() => {
         loading.value = false
       }, 500)

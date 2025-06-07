@@ -73,7 +73,7 @@
                   />
                 </template>
               </el-table-column>
-              <el-table-column label="创建时间" prop="createTime" width="200" sortable />
+              <!-- <el-table-column label="创建时间" prop="createTime" width="200" sortable /> -->
               <!-- 按钮组 -->
               <el-table-column label="操作" fixed="right" width="240">
                 <template #default="scope">
@@ -178,6 +178,13 @@ const deptObject = reactive({
   status: '0',
 })
 
+// 查询科室数据的参数，用于分页和模糊查询
+const queryDeptData = reactive({
+  pageNum: pageNum.value,
+  pageSize: pageSize.value,
+  deptName: keyWord.value,
+})
+
 // 监听多选
 const handleSelectionChange = (val) => {
   depIds.value = val
@@ -209,7 +216,7 @@ const batchDelete = async () => {
 
 //模糊查询
 const searchDept = (keyWordInput) => {
-  keyWord.value = keyWordInput
+  queryDeptData.deptName = keyWordInput
   getDeptFetch()
 }
 
@@ -253,7 +260,7 @@ const delDept = (deptId) => {
   }).then(() => {
     //删除科室
     http.delete('/dept/dept/deleteDept' , {params:{deptId:deptId}}).then((res) => {
-      if (res.data.data) {
+      if (res.data) {
         ElMessage.success('删除成功')
         getDeptFetch()
       } else {
@@ -289,7 +296,7 @@ const editDept = (deptId) => {
 //修改科室
 const updateDeptSubmit = () => {
   //后端发送修改科室请求
-  http.post('/dept/dept/updateDept', deptObject).then((res) => {
+  http.post('/dept/dept/update', deptObject).then((res) => {
     if (res.data) {
       ElMessage.success('修改成功')
       addOrEditDrawerModal.value = false
@@ -356,7 +363,7 @@ const updateUserStatus = async (id, status, name) => {
     console.error(error)
     ElNotification({
       title: '修改失败!',
-      message: '状态更新时发生错误，请稍后重试.',
+      message: '状态更新时发生错误，请稍后重试',
       type: 'error',
       offset: 50,
       duration: 3000,
@@ -396,17 +403,11 @@ onMounted(() => {
   getDeptFetch()
 })
 
+//获取科室数据
 const getDeptFetch = () => {
   loading.value = true
-  //获取科室数据
-  //分页参数对象
-  const params={
-    pageNum: pageNum.value,
-    pageSize: pageSize.value,
-    keyWord: keyWord.value
-  }
   http
-    .post('/dept/dept/list', params)
+    .post('/dept/dept/list', queryDeptData)
     .then((res) => {
       const list = Array.isArray(res.data.data.list) ? res.data.data.list : []
       // 将 status 转换为数字类型

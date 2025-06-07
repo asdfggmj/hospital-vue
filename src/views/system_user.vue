@@ -14,15 +14,15 @@
               <el-icon><Refresh /></el-icon>
               <span>重置选中用户账号</span>
             </el-button> -->
-            <el-button type="danger">
+            <el-button type="danger" @click="batchDelete" class="mr-20px">
               <el-icon><Minus /></el-icon>
-              <span>删除选中用户</span>
+              <span>批量删除</span>
             </el-button>
           </el-col>
           <!-- 模糊查询 -->
           <el-col :span="5">
             <el-input
-              v-model="keyWord"
+              v-model="queryUserObject.userName"
               @change="searchUser"
               placeholder="请输入用户名"
               clearable
@@ -40,7 +40,7 @@
         <!-- 表格 -->
         <el-row class="mt-10px">
           <el-col>
-            <el-table :data="userData" style="width: 100%" max-height="500" row-key="userId" border>
+            <el-table :data="userData" style="width: 100%" max-height="500" row-key="userId" border @selection-change="handleSelectionChange">
               <el-table-column fixed type="selection" width="55" />
               <el-table-column label="用户头像" property="picture" width="100">
                 <template #default="scope">
@@ -91,11 +91,11 @@
                         handleBeforeChange(
                           scope.row.userId,
                           scope.row.status === 0 ? '1' : '0',
-                          scope.row.userName,
+                          scope.row.userName
                         )
                     "
-                    :active-value="0"
-                    :inactive-value="1"
+                    :active-value='0'
+                    :inactive-value=1
                     active-text="正常"
                     inactive-text="禁用"
                     class="ml-2"
@@ -120,7 +120,7 @@
                     <el-button
                       type="primary"
                       size="small"
-                      @click="userGrant(scope.$index, scope.row.userId)"
+                      @click="userGrant( scope.row.userId)"
                     >
                       <el-icon><Pointer /></el-icon>
                       <span>分配角色</span>
@@ -182,7 +182,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="级别">
-            <el-select v-model="selectedFieldUserRank" placeholder="用户级别">
+            <el-select v-model="userObject.userRank" placeholder="用户级别">
               <el-option
                 v-for="item in userRankData"
                 :key="item.dictValue"
@@ -193,7 +193,7 @@
           </el-form-item>
           <el-form-item label="背景">
             <el-select
-              v-model="selectedFieldBackground"
+              v-model="userObject.background"
               @click="getAllBackground"
               placeholder="学历"
             >
@@ -276,14 +276,12 @@
 <script setup lang="ts">
 import http from '@/http'
 import {
-  dayjs,
   ElLoading,
   ElMessage,
   ElMessageBox,
   ElNotification
 } from 'element-plus'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useCookies } from '@vueuse/integrations/useCookies'
+import { onMounted, reactive, ref } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 
 const addOrEditDrawerModal = ref(false) //添加或编辑用户抽屉
@@ -297,6 +295,7 @@ const rowLoadingMap = reactive({}) //是否处于加载状态
 const deptData = ref([]) //科室数据
 const backgroundData = reactive([]) //背景数据
 const userRankData = reactive([]) //级别数据
+const userIds = ref([]) //选中的编号数组
 let dialog = ref(false) //控制分配抽屉
 //存储选中的角色编号的数组
 let rids = ref([])
@@ -325,8 +324,7 @@ const userObject = reactive({
   userRankValue: '',
   backgroundValue: '',
 })
-
-const queryUserObject = reactive({
+ const queryUserObject = reactive({
   pageNum: pageNum.value,
   pageSize: pageSize.value,
   userName: keyWord.value,
@@ -367,10 +365,10 @@ const uploadUserHeader = (file) => {
     background: 'rgba(0, 0, 0, 0.7)',
   })
   // 发送 POST 请求上传图片
-  http.post('/file/file/uploadImg', formData)
+  http.post('user/file/user/uploadImg', formData)
     .then((res) => {
-      if (res.data.code === 200) {
-        handleAvatarSuccess(res.data, file)
+      if (res.data.data) {
+        handleAvatarSuccess(res.data)
         if (addOrEditDrawerTitle.value == '添加用户') {
           ElMessage.success('头像上传成功!')
         } else {
@@ -424,35 +422,31 @@ const getDeptName = (deptId) => {
   return map.get(deptId) || '未知科室'
 }
 
-//使用dayjs序列化时间
-const formatDate = (date) => {
-  return date ? dayjs(date).format('YYYY-MM-DD HH:mm:ss') : '--'
-}
-
 //用户授权的按钮
-const userGrant = async (index, userId) => {
+const userGrant = async ( userId) => {
   uid.value = userId
   //查询用户拥有的角色编号
-  await http.get('/user/user/getUserRids' , {params:{userId:userId}}).then((res) => {
+  await http.get('/user/user/getUserRids' , {params:{uid:userId}}).then((res) => {
     rids.value = res.data.data
   })
   //查询所有的角色
-  await http.get('/role/role/getAll').then((res) => {
+  await http.get('/role/role/getNormal').then((res) => {
     //console.log(res)
     roleData.value = res.data.data
   })
   //用户授予角色抽屉显示
   dialog.value = true
 }
+
 //为用户授权
 function addUserRole() {
-  //判断没有选中的角色，不发送请求
-  //console.log('rids:',rids.value)
-  //向后端发送添加用户的角色的授权的请求
+  // -----------------------------------------------------------------------------------------------!
   const params = {
-    userId: uid.value,
+    uid: uid.value,
     rids: rids.value,
   }
+  // ------------------------------------------------------------------------------------------------!
+  //判断是否有选中的角色
   http.post('/user/user/addUserRole',params)
     .then((res) => {
       if (res.data.data) {
@@ -469,37 +463,37 @@ function addUserRole() {
     })
 }
 
-//根据抽屉值选择值返回用户级别
-const selectedFieldUserRank = computed({
-  get() {
-    return addOrEditDrawerTitle.value === '编辑用户'
-      ? userObject.userRankValue
-      : userObject.userRank
-  },
-  set(value) {
-    if (addOrEditDrawerTitle.value === '编辑用户') {
-      userObject.userRankValue = value
-    } else {
-      userObject.userRank = value
-    }
-  },
-})
+// //根据抽屉值选择值返回用户级别
+// const selectedFieldUserRank = computed({
+//   get() {
+//     return addOrEditDrawerTitle.value === '编辑用户'
+//       ? userObject.userRankValue
+//       : userObject.userRank
+//   },
+//   set(value) {
+//     if (addOrEditDrawerTitle.value === '编辑用户') {
+//       userObject.userRankValue = value
+//     } else {
+//       userObject.userRank = value
+//     }
+//   },
+// })
 
-//根据抽屉值选择值返回学历
-const selectedFieldBackground = computed({
-  get() {
-    return addOrEditDrawerTitle.value === '编辑用户'
-      ? userObject.backgroundValue
-      : userObject.background
-  },
-  set(value) {
-    if (addOrEditDrawerTitle.value === '编辑用户') {
-      userObject.backgroundValue = value
-    } else {
-      userObject.background = value
-    }
-  },
-})
+// //根据抽屉值选择值返回学历
+// const selectedFieldBackground = computed({
+//   get() {
+//     return addOrEditDrawerTitle.value === '编辑用户'
+//       ? userObject.backgroundValue
+//       : userObject.background
+//   },
+//   set(value) {
+//     if (addOrEditDrawerTitle.value === '编辑用户') {
+//       userObject.backgroundValue = value
+//     } else {
+//       userObject.background = value
+//     }
+//   },
+// })
 
 // 获取科室数据
 const getAllDept = async () => {
@@ -539,19 +533,19 @@ const getAllRank = async () => {
 
 //模糊查询
 const searchUser = (keyWordInput) => {
-  keyWord.value = keyWordInput
+  queryUserObject.userName = keyWordInput
   getUserData()
 }
 
 //上一页
 const sizeChange = (newPageSize) => {
-  pageSize.value = newPageSize
+  queryUserObject.pageSize = newPageSize
   getUserData()
 }
 
 //下一页
 const currentChange = (newPage) => {
-  pageNum.value = newPage
+  queryUserObject.pageNum = newPage
   getUserData()
 }
 
@@ -582,7 +576,7 @@ const beforeChangeAddOrEditDrawer = () => {
 }
 
 //实现添加用户头像文件上传
-const handleAvatarSuccess = (response, uploadFile) => {
+const handleAvatarSuccess = (response) => {
   // 这里使用从服务器返回的图片 URL，而不是本地临时URL
   userObject.picture = response.data // 更新用户头像地址
 }
@@ -627,9 +621,8 @@ const addUser = () => {
 
 //添加用户
 const addUserSubmit = () => {
-  //后端发送添加用户请求
   http.post('/user/user/addUser', userObject).then((res) => {
-    if (res.data.data === true) {
+    if (res.data) {
       ElMessage.success('添加成功')
       addOrEditDrawerModal.value = false
     } else {
@@ -641,14 +634,14 @@ const addUserSubmit = () => {
 
 //删除用户
 const delUser = (userId) => {
-  ElMessageBox.confirm('确定删除编号为' + userId + '的用户？', 'Warning', {
+  ElMessageBox.confirm('确定删除' + userId + '用户？', 'Warning', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning',
   }).then(() => {
     //删除用户
-    http.post('user/user/deleteUser' ,{params: {userId:userId}}).then((res) => {
-      if (res.data.data) {
+    http.post(`user/user/deleteUser?userId=${userId}`).then((res) => {
+      if (res.data) {
         ElMessage.success('删除成功')
         getUserData()
       } else {
@@ -658,12 +651,41 @@ const delUser = (userId) => {
   })
 }
 
-//修改用户抽屉
+// 监听多选
+const handleSelectionChange = (val) => {
+  userIds.value = val
+}
+
+//批量删除
+const batchDelete = async () => {
+  if (userIds.value.length === 0) {
+    return ElMessage.warning('请选择要删除的项！')
+  }
+  ElMessageBox.confirm(`确定删除选中的 ${userIds.value.length} 条记录吗？`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(() => {
+    //提取id
+    const ids = userIds.value.map((item) => item.userId)
+    // 调用 API 批量删除
+    http.delete('/user/user/batchDelete', {data:ids} ).then((res) => {
+      if (res.data && res.data !== null) {
+        ElMessage.success('批量删除成功')
+        getUserData()
+      } else {
+        ElMessage.error('批量删除失败')
+      }
+    })
+  })
+}
+
+//回调单个用户
 const editUser = (userId) => {
   addOrEditDrawerTitle.value = '编辑用户'
   addOrEditDrawerModal.value = true
   //回调单个用户数据
-  http.get('/user/user/getUserRids' + {params:{ userId: userId }})
+  http.get('/user/user/getUserById' , {params:{ userId:userId }})
     .then((res) => {
       if (res.data.data) {
         const data = res.data.data
